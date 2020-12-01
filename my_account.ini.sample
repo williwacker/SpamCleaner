@@ -1,0 +1,5 @@
+BLACKLIST   = blacklist.txt
+HOST        = imap.account.com
+USERNAME    = user
+PASSWORD    = password
+FOLDER      = Spam,Blacklist
