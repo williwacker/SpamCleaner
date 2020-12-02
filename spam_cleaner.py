@@ -24,7 +24,7 @@ class SpamCleaner():
 	def __init__(self):
 		args = self.__get_cli_arguments__()
 		#args.configfile = 'gmx2.ini'	# for debugging purposes only
-		if args.configfile and Path(args.configfile).is_file():
+		if args.configfile and Path(args.configfile[0]).is_file():
 			self.prefs = self.__read_configuration__(args.configfile)
 		else:
 			print(
