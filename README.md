@@ -1,6 +1,7 @@
 # SpamCleaner
 
 Application for cleaning up your email account from spam mail based on a given list of email addresses
+In order to easily enhance your blacklist you can create a folder "Blacklist" in your email account. If you add this folder into your <filename>.ini folder list then every email address in this folder gets added to the appropriate blacklist.
 
 ## Installation
 
