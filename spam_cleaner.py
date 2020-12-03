@@ -8,7 +8,7 @@ from pathlib import Path
 
 from imapclient import IMAPClient
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 # Enable logging
 logfile = "/var/log/" + \
@@ -23,25 +23,27 @@ class SpamCleaner():
 
 	def __init__(self):
 		args = self.__get_cli_arguments__()
-		#args.configfile = 'gmx2.ini'	# for debugging purposes only
+		#args.configfile = ['gmx.ini']	# for debugging purposes only
 		if args.configfile and Path(args.configfile[0]).is_file():
 			self.prefs = self.__read_configuration__(args.configfile)
 		else:
 			print(
 				'No config file provided or config file not found. Use "{} -c <config.ini>"'.format(os.path.basename(__file__)))
 			return
-		self.blacklist = self.get_blacklist()
-		self.cleanup()
+		for account in self.prefs:
+			self.cleanup(account)
 
-	def get_blacklist(self):
-		if self.prefs['DEFAULT']['blacklist'] and Path(self.prefs['DEFAULT']['blacklist']).is_file():
-			return open(self.prefs['DEFAULT']['blacklist'], 'r').read().splitlines()
+	def get_blacklist(self, blacklist_file):
+		if blacklist_file and Path(blacklist_file).is_file():
+			return open(blacklist_file, 'r').read().splitlines()
 
-	def append_blacklist(self, address):
-		if self.prefs['DEFAULT']['blacklist'] and Path(self.prefs['DEFAULT']['blacklist']).is_file():
-			bl = open(self.prefs['DEFAULT']['blacklist'], 'a')
-			bl.write(address)
-			bl.write("\n")
+	def append_blacklist(self, blacklist_file, address):
+		blacklist = self.get_blacklist(blacklist_file)
+		if blacklist:
+			blacklist.append(address)
+			blacklist = list(set(blacklist))
+			bl = open(blacklist_file, 'w')
+			bl.write('\n'.join(blacklist))
 			bl.close()
 
 	def __get_cli_arguments__(self):
@@ -67,11 +69,17 @@ class SpamCleaner():
 				preferences[sectionname][name] = value
 		return preferences
 
-	def cleanup(self):
-		HOST = self.prefs['DEFAULT']['host']
-		USERNAME = self.prefs['DEFAULT']['username']
-		PASSWORD = self.prefs['DEFAULT']['password']
-		FOLDERLIST = self.prefs['DEFAULT']['folder'].split(',')
+	def cleanup(self, account):
+		if set(['host', 'username', 'password', 'folder']).difference(set(self.prefs[account])):
+			return
+		HOST = self.prefs[account]['host']
+		USERNAME = self.prefs[account]['username']
+		PASSWORD = self.prefs[account]['password']
+		FOLDERLIST = self.prefs[account]['folder'].split(',')
+		BLACKLISTFILE = self.prefs[account]['blacklist'] if 'blacklist' in self.prefs[account] else self.prefs['DEFAULT']['blacklist']
+		BLACKLIST = self.get_blacklist(BLACKLISTFILE)
+		if not BLACKLIST:
+			return
 
 		ssl_context = ssl.create_default_context()
 
@@ -96,10 +104,12 @@ class SpamCleaner():
 						message_data[b'RFC822'])
 					if folder.strip().lower() == 'blacklist':
 						address = email_message.get('From')
-						self.append_blacklist(address[address.index("<")+1:-1])
+						self.append_blacklist(BLACKLISTFILE, address[address.index("<")+1:-1])
 						server.delete_messages([uid])
 						delete_count += 1
-					if next((s for s in self.blacklist if s in email_message.get('From')), None):
+						logger.info("{} {} {} has been deleted".format(
+							uid, email_message.get('From'), email_message.get('Subject')))
+					if next((s for s in BLACKLIST if s in email_message.get('From')), None):
 						server.delete_messages([uid])
 						delete_count += 1
 						logger.info("{} {} {} has been deleted".format(

@@ -1,5 +1,15 @@
+[DEFAULT]
 BLACKLIST   = blacklist.txt
-HOST        = imap.account.com
-USERNAME    = user
-PASSWORD    = password
+
+[ACCOUNT1]
+HOST        = imap.account1.com
+USERNAME    = user1
+PASSWORD    = password1
 FOLDER      = Spam,Blacklist
+
+[ACCOUNT2]
+HOST        = imap.account2.com
+USERNAME    = user2
+PASSWORD    = password2
+FOLDER      = Spam
+BLACKLIST   = blacklist2.txt
