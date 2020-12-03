@@ -15,11 +15,11 @@ Application for cleaning up your email account from spam mail based on a given l
 ## PRE-REQUISITE
 
 ```
-pip install imapclient
+pip3 install imapclient
 ```
 
 ## EXECUTION
 
 ```
-python spam_cleaner.py -c <filename>.ini
+python3 spam_cleaner.py -c <filename>.ini
 ```
