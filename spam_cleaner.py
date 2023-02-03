@@ -4,6 +4,7 @@ import email
 import logging
 import os
 import ssl
+import sys
 from pathlib import Path
 
 from imapclient import IMAPClient
@@ -23,7 +24,8 @@ class SpamCleaner():
 
     def __init__(self):
         args = self.__get_cli_arguments__()
-        # args.configfile = ['gmx.ini']  # for debugging purposes only
+        if sys.platform.startswith('win'):
+            args.configfile = ['gmx.ini']  # for debugging purposes only
         if args.configfile and Path(args.configfile[0]).is_file():
             self.prefs = self.__read_configuration__(args.configfile)
         else:
@@ -42,11 +44,17 @@ class SpamCleaner():
     def append_blacklist(self, blacklist_file, address):
         blacklist = self.get_black_or_white_list(blacklist_file)
         if blacklist:
-            blacklist.append(address)
-            blacklist = list(set(blacklist))
-            bl = open(blacklist_file, 'w')
-            bl.write('\n'.join(blacklist))
-            bl.close()
+            found = False
+            for line in blacklist:
+                if line in address:
+                    found = True
+                    break
+            if not found:
+                blacklist.append(address)
+                blacklist = sorted(list(set(blacklist)))
+                bl = open(blacklist_file, 'w')
+                bl.write('\n'.join(blacklist))
+                bl.close()
 
     def __get_cli_arguments__(self):
         parser = argparse.ArgumentParser(description='Email Spam Cleaner')
@@ -141,7 +149,7 @@ class SpamCleaner():
 
     def moveSpam(self, account):
         diff = set(['host', 'username', 'password', 'folder',
-                   'inbox']).difference(set(self.prefs[account]))
+                    'inbox']).difference(set(self.prefs[account]))
         if diff:
             logger.error(
                 'Missing parameter(s) {} in ini file for {}'.format(diff, account))
