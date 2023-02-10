@@ -5,6 +5,7 @@ import logging
 import os
 import ssl
 import sys
+from email.header import decode_header
 from pathlib import Path
 
 from imapclient import IMAPClient
@@ -136,6 +137,16 @@ class SpamCleaner():
                             delete_count += 1
                             logger.info("{} {} {} has been deleted".format(
                                 uid, email_message.get('From'), email_message.get('Subject')))
+                            continue
+#                        print(decode_header(email_message.get('Subject')))
+#                        for s in BLACKLIST:
+#                            if "@" not in s and s.lower() in str(email_message.get('Subject')).lower():
+#                                print(s)
+                        if next((s for s in BLACKLIST if s.lower() in str(decode_header(email_message.get('Subject'))).lower()), None):
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info("{} {} {} has been deleted".format(
+                                uid, email_message.get('From'), str(decode_header(email_message.get('Subject')))))
                     server.close_folder()
                 if delete_count == 0:
                     logger.info(
