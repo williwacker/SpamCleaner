@@ -8,6 +8,7 @@ import sys
 from email.header import decode_header
 from pathlib import Path
 
+from fuzzywuzzy import fuzz
 from imapclient import IMAPClient
 
 __version__ = '1.1.0'
@@ -35,8 +36,8 @@ class SpamCleaner():
             return
         for account in self.prefs:
             if account != 'DEFAULT':
-                self.deleteSpam(account)
                 self.moveSpam(account)
+                self.deleteSpam(account)
 
     def get_black_or_white_list(self, list_file):
         if list_file and Path(list_file).is_file():
@@ -132,11 +133,17 @@ class SpamCleaner():
                                 delete_count += 1
                                 logger.info("{} {} {} has been deleted".format(
                                     uid, address, email_message.get('Subject')))
+                        if next((s for s in BLACKLIST if email_message.get('From') and fuzz.ratio(s, email_message.get('From')) >= 60), None):
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info("{} {} {} has been deleted".format(
+                                uid, email_message.get('From'), str(decode_header(email_message.get('Subject')))))
+                            continue
                         if next((s for s in BLACKLIST if email_message.get('From') and s in email_message.get('From')), None):
                             server.delete_messages([uid])
                             delete_count += 1
                             logger.info("{} {} {} has been deleted".format(
-                                uid, email_message.get('From'), email_message.get('Subject')))
+                                uid, email_message.get('From'), str(decode_header(email_message.get('Subject')))))
                             continue
                         if next((s for s in BLACKLIST if s.lower() in str(decode_header(email_message.get('Subject'))).lower()), None):
                             server.delete_messages([uid])
