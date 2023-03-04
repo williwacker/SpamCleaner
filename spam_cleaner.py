@@ -122,8 +122,8 @@ class SpamCleaner():
                             address = email_message.get('From')
                             if not address:
                                 for defect in email_message.defects:
-                                    type, address = defect.line.split(':', 1)
-                                    if type.strip() == 'From':
+                                    dtype, address = defect.line.split(':', 1)
+                                    if dtype.strip() == 'From':
                                         break
                             if address:
                                 if '<' in address:
@@ -133,18 +133,31 @@ class SpamCleaner():
                                 delete_count += 1
                                 logger.info("{} {} {} has been deleted".format(
                                     uid, address, email_message.get('Subject')))
-                        if next((s for s in BLACKLIST if email_message.get('From') and fuzz.ratio(s, email_message.get('From')) >= 60), None):
-                            server.delete_messages([uid])
-                            delete_count += 1
-                            logger.info("{} {} {} has been deleted".format(
-                                uid, email_message.get('From'), str(decode_header(email_message.get('Subject')))))
-                            continue
-                        if next((s for s in BLACKLIST if email_message.get('From') and s in email_message.get('From')), None):
-                            server.delete_messages([uid])
-                            delete_count += 1
-                            logger.info("{} {} {} has been deleted".format(
-                                uid, email_message.get('From'), str(decode_header(email_message.get('Subject')))))
-                            continue
+                        if email_message.get('From'):
+                            email_from = decode_header(
+                                email_message.get('From'))[0]
+#                            print("0 ", type(email_from[0]), str(email_from))
+                            if type(email_from[0]) == bytes and not email_from[1]:
+                                continue
+                            elif type(email_from[0]) == bytes and email_from[1]:
+                                email_from = email_from[0].decode(
+                                    email_from[1])
+#                                print("1 "+email_from)
+                            elif type(email_from[0]) == str:
+                                email_from = email_from[0]
+#                            print("2 "+email_from)
+                            if next((s for s in BLACKLIST if fuzz.ratio(s.lower(), email_from.lower()) >= 60), None):
+                                server.delete_messages([uid])
+                                delete_count += 1
+                                logger.info("{} {} {} has been deleted".format(
+                                    uid, email_from, str(decode_header(email_message.get('Subject')))))
+                                continue
+                            if next((s for s in BLACKLIST if s.lower() in email_from.lower()), None):
+                                server.delete_messages([uid])
+                                delete_count += 1
+                                logger.info("{} {} {} has been deleted".format(
+                                    uid, email_from, str(decode_header(email_message.get('Subject')))))
+                                continue
                         if next((s for s in BLACKLIST if s.lower() in str(decode_header(email_message.get('Subject'))).lower()), None):
                             server.delete_messages([uid])
                             delete_count += 1
