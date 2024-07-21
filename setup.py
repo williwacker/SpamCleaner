@@ -24,7 +24,7 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8', mode='r') as f:
     long_description = f.read().strip()
 
 setuptools.setup(
-    name='fritzCallMon',
+    name='spamCleaner',
     version='1.0.0',
     author='Werner Kühn',
     author_email='willi1wacker@gmx.de',
