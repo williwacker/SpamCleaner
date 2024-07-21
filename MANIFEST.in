@@ -1,0 +1,6 @@
+include AUTHORS
+include LICENSE.md
+include MANIFEST.in
+include README.md
+recursive-include spamCleaner/data *
+recursive-include spamCleaner/config *
