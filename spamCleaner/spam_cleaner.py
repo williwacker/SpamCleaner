@@ -17,11 +17,16 @@ from imapclient import IMAPClient
 __version__ = '1.1.0'
 
 # Enable logging
+logpath = os.path.join(
+    os.path.dirname(__file__),
+    'log'
+)
 logfile = os.path.join(
-    os.path.basename(os.path.dirname(__file__)),
-    'log',
+    logpath,
     os.path.splitext(os.path.basename(__file__))[0]+".log"
 )
+if not os.path.exists(logpath):
+    os.makedirs(logpath)
 logging.basicConfig(format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)s] %(message)s',
                     filename=logfile, level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -110,7 +115,7 @@ class SpamCleaner():
         elif isinstance(email_from[0], str):
             email_from = email_from[0]
         return email_from
-    
+
     def get_subject(self, email_message):
         encoded_str = decode_header(email_message.get('Subject'))
         subject = ''
