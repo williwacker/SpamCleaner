@@ -18,7 +18,7 @@ __version__ = '1.1.0'
 
 # Enable logging
 logfile = os.path.join(
-    os.path.dirname(__file__),
+    os.path.basename(os.path.dirname(__file__)),
     'log',
     os.path.splitext(os.path.basename(__file__))[0]+".log"
 )
