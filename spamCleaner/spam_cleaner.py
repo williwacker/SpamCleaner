@@ -27,15 +27,24 @@ logfile = os.path.join(
 )
 if not os.path.exists(logpath):
     os.makedirs(logpath)
-logging.basicConfig(format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)s] %(message)s',
-                    filename=logfile, level=logging.INFO)
+logging.basicConfig(
+    handlers=[
+        logging.FileHandler(
+            filename=logfile,
+            encoding='utf-8',
+            mode='a+',
+        )
+    ],
+    format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)s] %(message)s',
+    level=logging.INFO,
+)
 logger = logging.getLogger(__name__)
 
 
 class SpamCleaner():
 
     def __init__(self):
-        logger.info(__file__+' started')
+        logger.info("%s started", __file__)
         args = self.__get_cli_arguments__()
         fname = os.path.join(
             os.path.dirname(__file__),
@@ -117,20 +126,29 @@ class SpamCleaner():
         return email_from
 
     def get_subject(self, email_message):
+        emoji_finder = re.compile(
+            '[\U0001F300-\U0001F64F\U0001F680-\U0001F6FF\u2600-\u26FF\u2700-\u27BF]+')
         encoded_str = decode_header(email_message.get('Subject'))
         subject = ''
         for s_tuple in encoded_str:
             if s_tuple[1]:
                 try:
-                    subject += s_tuple[0].decode(encoding=s_tuple[1])
+                    subject += s_tuple[0].decode(
+                        encoding=s_tuple[1],
+                        errors="ignore",
+                    )
                 except:
-                    subject += s_tuple[0].decode()
+                    subject += s_tuple[0].decode(
+                        errors="ignore",
+                    )
             else:
                 try:
-                    subject += s_tuple[0].decode()
+                    subject += s_tuple[0].decode(
+                        errors="ignore",
+                    )
                 except:
                     subject += s_tuple[0]
-        return subject
+        return re.sub(emoji_finder, "", subject)
 
     def deleteSpam(self, account):
         diff = set(['host', 'username', 'password', 'folder']
@@ -146,14 +164,17 @@ class SpamCleaner():
         USERNAME = self.prefs[account]['username']
         PASSWORD = self.prefs[account]['password']
         FOLDERLIST = self.prefs[account]['folder'].split(',')
-        fname = os.path.join(
-            os.path.dirname(__file__),
-            'data',
+        BLACKLISTFILE = os.path.join(
+            os.getcwd(),
             self.prefs[account]['blacklist'] if 'blacklist' in self.prefs[
                 account] else self.prefs['DEFAULT']['blacklist'],
         )
-        if os.path.isfile(fname):
-            BLACKLISTFILE = fname
+        if not os.path.exists(os.path.dirname(BLACKLISTFILE)):
+            os.makedirs(os.path.dirname(BLACKLISTFILE))
+            open(BLACKLISTFILE, 'a').close()
+        if not os.path.isfile(BLACKLISTFILE):
+            open(BLACKLISTFILE, 'a').close()
+
         BLACKLIST = self.get_black_or_white_list(BLACKLISTFILE)
 
         ssl_context = ssl.create_default_context()
@@ -290,14 +311,17 @@ class SpamCleaner():
         PASSWORD = self.prefs[account]['password']
         FOLDERLIST = self.prefs[account]['folder'].split(',')
         INBOX = self.prefs[account]['inbox']
-        fname = os.path.join(
-            os.path.dirname(__file__),
-            'data',
+        WHITELISTFILE = os.path.join(
+            os.getcwd(),
             self.prefs[account]['whitelist'] if 'whitelist' in self.prefs[
-                account] else self.prefs['DEFAULT']['whitelist'],
+                account] else self.prefs['DEFAULT']['whitelist']
         )
-        if os.path.isfile(fname):
-            WHITELISTFILE = fname
+        if not os.path.exists(os.path.dirname(WHITELISTFILE)):
+            os.makedirs(os.path.dirname(WHITELISTFILE))
+            open(WHITELISTFILE, 'a').close()
+        if not os.path.isfile(WHITELISTFILE):
+            open(WHITELISTFILE, 'a').close()
+
         WHITELIST = self.get_black_or_white_list(WHITELISTFILE)
 
         ssl_context = ssl.create_default_context()
