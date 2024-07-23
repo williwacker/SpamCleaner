@@ -10,35 +10,43 @@ import sys
 from datetime import datetime
 from email.header import decode_header
 from pathlib import Path
+from logging.handlers import TimedRotatingFileHandler
+from logging import StreamHandler
 
 from fuzzywuzzy import fuzz
 from imapclient import IMAPClient
 
 __version__ = '1.1.0'
 
+
+def is_docker():
+    cgroup = Path('/proc/self/cgroup')
+    return Path('/.dockerenv').is_file() or (cgroup.is_file() and 'docker' in cgroup.read.text())
+
+
 # Enable logging
-logpath = os.path.join(
-    os.path.dirname(__file__),
-    'log'
-)
-logfile = os.path.join(
-    logpath,
-    os.path.splitext(os.path.basename(__file__))[0]+".log"
-)
-if not os.path.exists(logpath):
-    os.makedirs(logpath)
-logging.basicConfig(
-    handlers=[
-        logging.FileHandler(
-            filename=logfile,
-            encoding='utf-8',
-            mode='a+',
-        )
-    ],
-    format='%(asctime)s %(levelname)s [%(filename)s:%(lineno)s] %(message)s',
-    level=logging.INFO,
-)
 logger = logging.getLogger(__name__)
+if is_docker():
+    handler = StreamHandler()
+else:
+    logfile = os.path.join(
+        os.path.dirname(__file__),
+        'log',
+        os.path.splitext(os.path.basename(__file__))[0]+".log",
+    )
+    handler = TimedRotatingFileHandler(
+        filename=logfile,
+        when='midnight',
+        encoding='utf-8',
+        backupCount=7
+    )
+formatter = logging.Formatter(
+    fmt='%(asctime)s %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+handler.setFormatter(formatter)
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 
 class SpamCleaner():
@@ -109,7 +117,7 @@ class SpamCleaner():
         headers = email_message._headers
         res = list(
             filter(lambda sub, ele='Received': ele in sub[0], headers))[0][1]
-        m = re.findall("from .*\(\[(\d+.\d+.\d+.\d+)\]\)", res)
+        m = re.findall(r"from .*\(\[(\d+.\d+.\d+.\d+)\]\)", res)
         if m:
             return m[0]
 
