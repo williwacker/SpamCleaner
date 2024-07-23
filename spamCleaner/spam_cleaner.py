@@ -26,6 +26,7 @@ def is_docker():
 
 # Enable logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 if is_docker():
     handler = StreamHandler()
 else:
@@ -45,7 +46,6 @@ formatter = logging.Formatter(
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 
