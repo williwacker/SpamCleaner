@@ -239,7 +239,7 @@ class SpamCleaner():
                                     address,
                                     self.get_subject(email_message),
                                 )
-                        if email_from:
+                        if email_from and received_ip:
                             if next((s for s in BLACKLIST if re.search(s, received_ip)), None):
                                 server.delete_messages([uid])
                                 delete_count += 1
