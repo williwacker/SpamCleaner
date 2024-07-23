@@ -74,7 +74,7 @@ class SpamCleaner():
 
     def get_black_or_white_list(self, list_file):
         if list_file and Path(list_file).is_file():
-            return codecs.open(list_file, 'r', 'utf-8').read().splitlines()
+            return [x for x in codecs.open(list_file, 'r', 'utf-8').read().splitlines() if x]
 
     def append_blacklist(self, blacklist_file, address):
         blacklist = self.get_black_or_white_list(blacklist_file)
@@ -303,6 +303,11 @@ class SpamCleaner():
                         delete_count,
                         USERNAME,
                     )
+        else:
+            logger.info(
+                'No blacklist entries found for %s!',
+                USERNAME,
+            )            
 
     def moveSpam(self, account):
         diff = set(['host', 'username', 'password', 'folder',
@@ -363,7 +368,7 @@ class SpamCleaner():
                                 "%s %s %s has been moved",
                                 uid,
                                 email_message.get('From'),
-                                email_message.get('Subject'),
+                                self.get_subject(email_message)
                             )
                     server.close_folder()
                 if move_count == 0:
