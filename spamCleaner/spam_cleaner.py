@@ -78,17 +78,16 @@ class SpamCleaner():
 
     def append_blacklist(self, blacklist_file, address):
         blacklist = self.get_black_or_white_list(blacklist_file)
-        if blacklist:
-            found = False
-            for line in blacklist:
-                if line in address:
-                    found = True
-                    break
-            if not found:
-                blacklist.append(address)
-                blacklist = sorted(list(set(blacklist)))
-                with codecs.open(blacklist_file, 'w', 'utf-8') as bl:
-                    bl.write('\n'.join(blacklist))
+        found = False
+        for line in blacklist:
+            if line in address:
+                found = True
+                break
+        if not found:
+            blacklist.append(address)
+            blacklist = sorted(list(set(blacklist)))
+            with codecs.open(blacklist_file, 'w', 'utf-8') as bl:
+                bl.write('\n'.join(blacklist))
 
     def __get_cli_arguments__(self):
         parser = argparse.ArgumentParser(description='Email Spam Cleaner')
@@ -116,12 +115,8 @@ class SpamCleaner():
     def get_ip(self, email_message):
         headers = email_message._headers
         res = list(
-            filter(lambda sub, ele='Received': ele in sub[0], headers))[0][1]
-        m = re.findall("from .*\(\[(\d+.\d+.\d+.\d+)\]\)", res)
-        print(res)
-        print('ohne r', m)        
+            filter(lambda sub, ele='Received': ele in sub[0], headers))[0][1] 
         m = re.findall(r"from .*\(\[(\d+.\d+.\d+.\d+)\]\)", res)
-        print('mit r',m)
         if m:
             return m[0]
 
