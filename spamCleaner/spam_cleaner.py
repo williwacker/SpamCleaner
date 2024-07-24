@@ -117,7 +117,11 @@ class SpamCleaner():
         headers = email_message._headers
         res = list(
             filter(lambda sub, ele='Received': ele in sub[0], headers))[0][1]
+        m = re.findall("from .*\(\[(\d+.\d+.\d+.\d+)\]\)", res)
+        print(res)
+        print('ohne r', m)        
         m = re.findall(r"from .*\(\[(\d+.\d+.\d+.\d+)\]\)", res)
+        print('mit r',m)
         if m:
             return m[0]
 
@@ -193,121 +197,115 @@ class SpamCleaner():
         # check if the certificate is trusted by a certificate authority
         ssl_context.verify_mode = ssl.CERT_REQUIRED
 
-        if BLACKLIST:
-            delete_count = 0
-            with IMAPClient(HOST, ssl_context=ssl_context) as server:
-                server.login(USERNAME, PASSWORD)
-                for folder in FOLDERLIST:
-                    try:
-                        server.select_folder(folder.strip(), readonly=False)
-                    except:
-                        logger.error(
-                            'Unknown Folder: %s',
-                            folder,
-                        )
-                        return
-                    logger.info(
-                        'Processing folder "%s" for account "%s"',
+        delete_count = 0
+        with IMAPClient(HOST, ssl_context=ssl_context) as server:
+            server.login(USERNAME, PASSWORD)
+            for folder in FOLDERLIST:
+                try:
+                    server.select_folder(folder.strip(), readonly=False)
+                except:
+                    logger.error(
+                        'Unknown Folder: %s',
                         folder,
-                        USERNAME,
                     )
-                    messages = server.search('ALL')
-                    for uid, message_data in server.fetch(messages, 'RFC822').items():
-                        email_message = email.message_from_bytes(
-                            message_data[b'RFC822'])
-                        received_ip = self.get_ip(email_message)
-                        email_from = self.get_from(email_message)
-                        if folder.strip().lower() == 'blacklist':
-                            address = email_message.get('From')
-                            if not address:
-                                for defect in email_message.defects:
-                                    dtype, address = defect.line.split(':', 1)
-                                    if dtype.strip() == 'From':
-                                        break
-                            if address:
-                                if '<' in address:
-                                    address = address[address.index("<")+1:-1]
-                                self.append_blacklist(BLACKLISTFILE, address)
-                                if received_ip:
-                                    self.append_blacklist(
-                                        BLACKLISTFILE, received_ip)
-                                server.delete_messages([uid])
-                                delete_count += 1
-                                logger.info(
-                                    '%s "%s" "%s" has been deleted based on blacklist folder',
-                                    uid,
-                                    address,
-                                    self.get_subject(email_message),
-                                )
-                        if email_from and received_ip:
-                            if next((s for s in BLACKLIST if re.search(s, received_ip)), None):
-                                server.delete_messages([uid])
-                                delete_count += 1
-                                logger.info(
-                                    '%s "%s" "%s" has been deleted on IP',
-                                    uid,
-                                    email_from,
-                                    self.get_subject(email_message),
-                                )
-                                continue
-                            if next((s for s in BLACKLIST if fuzz.ratio(s.lower(), email_from.lower()) >= 60), None):
+                    return
+                logger.info(
+                    'Processing folder "%s" for account "%s"',
+                    folder,
+                    USERNAME,
+                )
+                messages = server.search('ALL')
+                for uid, message_data in server.fetch(messages, 'RFC822').items():
+                    email_message = email.message_from_bytes(
+                        message_data[b'RFC822'])
+                    received_ip = self.get_ip(email_message)
+                    email_from = self.get_from(email_message)
+                    if folder.strip().lower() == 'blacklist':
+                        address = email_message.get('From')
+                        if not address:
+                            for defect in email_message.defects:
+                                dtype, address = defect.line.split(':', 1)
+                                if dtype.strip() == 'From':
+                                    break
+                        if address:
+                            if '<' in address:
+                                address = address[address.index("<")+1:-1]
+                            self.append_blacklist(BLACKLISTFILE, address)
+                            if received_ip:
                                 self.append_blacklist(
                                     BLACKLISTFILE, received_ip)
-                                server.delete_messages([uid])
-                                delete_count += 1
-                                logger.info(
-                                    '%s "%s" "%s" has been deleted on From-ratio',
-                                    uid,
-                                    email_from,
-                                    self.get_subject(email_message),
-                                )
-                                continue
-                            if next((s for s in BLACKLIST if s.lower() in email_from.lower()), None):
-                                self.append_blacklist(
-                                    BLACKLISTFILE, received_ip)
-                                server.delete_messages([uid])
-                                delete_count += 1
-                                logger.info(
-                                    '%s "%s" "%s" has been deleted on in-From',
-                                    uid,
-                                    email_from,
-                                    self.get_subject(email_message),
-                                )
-                                continue
-                            if next((s for s in BLACKLIST if s.lower() in str(decode_header(email_message.get('Subject'))).lower()), None):
-                                self.append_blacklist(
-                                    BLACKLISTFILE, received_ip)
-                                server.delete_messages([uid])
-                                delete_count += 1
-                                logger.info(
-                                    '%s "%s" "%s" has been deleted on Subject',
-                                    uid,
-                                    email_from,
-                                    self.get_subject(email_message),
-                                )
-                    server.close_folder()
-                if delete_count == 0:
-                    logger.info(
-                        'No matching Emails found for %s!',
-                        USERNAME,
-                    )
-                elif delete_count == 1:
-                    logger.info(
-                        "%s Email has been deleted for %s!",
-                        delete_count,
-                        USERNAME,
-                    )
-                else:
-                    logger.info(
-                        "%s Emails have been deleted for %s!",
-                        delete_count,
-                        USERNAME,
-                    )
-        else:
-            logger.info(
-                'No blacklist entries found for %s!',
-                USERNAME,
-            )            
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info(
+                                '%s "%s" "%s" has been deleted based on blacklist folder',
+                                uid,
+                                address,
+                                self.get_subject(email_message),
+                            )
+                    if email_from and received_ip:
+                        if next((s for s in BLACKLIST if re.search(s, received_ip)), None):
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info(
+                                '%s "%s" "%s" has been deleted on IP',
+                                uid,
+                                email_from,
+                                self.get_subject(email_message),
+                            )
+                            continue
+                        if next((s for s in BLACKLIST if fuzz.ratio(s.lower(), email_from.lower()) >= 60), None):
+                            self.append_blacklist(
+                                BLACKLISTFILE, received_ip)
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info(
+                                '%s "%s" "%s" has been deleted on From-ratio',
+                                uid,
+                                email_from,
+                                self.get_subject(email_message),
+                            )
+                            continue
+                        if next((s for s in BLACKLIST if s.lower() in email_from.lower()), None):
+                            self.append_blacklist(
+                                BLACKLISTFILE, received_ip)
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info(
+                                '%s "%s" "%s" has been deleted on in-From',
+                                uid,
+                                email_from,
+                                self.get_subject(email_message),
+                            )
+                            continue
+                        if next((s for s in BLACKLIST if s.lower() in str(decode_header(email_message.get('Subject'))).lower()), None):
+                            self.append_blacklist(
+                                BLACKLISTFILE, received_ip)
+                            server.delete_messages([uid])
+                            delete_count += 1
+                            logger.info(
+                                '%s "%s" "%s" has been deleted on Subject',
+                                uid,
+                                email_from,
+                                self.get_subject(email_message),
+                            )
+                server.close_folder()
+            if delete_count == 0:
+                logger.info(
+                    'No matching Emails found for %s to be deleted!',
+                    USERNAME,
+                )
+            elif delete_count == 1:
+                logger.info(
+                    "%s Email has been deleted for %s!",
+                    delete_count,
+                    USERNAME,
+                )
+            else:
+                logger.info(
+                    "%s Emails have been deleted for %s!",
+                    delete_count,
+                    USERNAME,
+                )
 
     def moveSpam(self, account):
         diff = set(['host', 'username', 'password', 'folder',
